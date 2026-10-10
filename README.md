@@ -1,4 +1,4 @@
-# Linn IT Solutions — Linn Tasks 1.7.0
+# Linn IT Solutions — Linn Tasks 1.8.0
 
 Mobile-first employee task delegation system for Linn IT Solutions. The default user interface is Myanmar language and the application can be installed as a PWA on Android and iPhone.
 
@@ -30,11 +30,15 @@ Every API request checks the signed-in employee's active status, role and task m
 - Comments and private file attachments up to 10 MB each
 - Inline thumbnail and full-screen preview for safe photo formats, with original-file download
 - CEO/Admin dashboard, workload summary and deadline views
+- Dashboard AI Analysis panel with live task risk indicators and per-employee KPI scores calculated from authorized task data
+- Myanmar and English interface selector; Myanmar remains the default and each browser remembers its choice
 - Employee directory with switchable Card/Table views and editable name, email, department and role-limited access
 - Private employee profile photos in JPG, PNG or WebP format up to 3 MB
 - Email/password authentication with temporary-password first login
 - Persistent in-app notifications with per-user read state and a four-second open-app sync fallback
 - Encrypted Web Push for task events and deadline reminders
+- Background PWA notifications with 24-hour provider retention, including when the installed app is closed after the user grants notification permission
+- Top-right in-app notification messages on desktop and mobile
 - Hourly unattended deadline checks, plus an immediate check while the app is open
 - CSV task export and JSON team backup metadata
 - Installable Android/iPhone PWA with Home Screen shortcuts
@@ -171,7 +175,7 @@ npm test
 npm run build
 ```
 
-The current suite contains 24 automated tests covering authentication, role/task access, temporary passwords, employee provisioning, profile and email editing, private employee photos, comments/attachments and safe photo previews, notification recipients and read state, deadline deduplication, MCP deadline checks, PWA metadata, SSRF prevention, encrypted Web Push, VAPID signatures and revoked-session delivery restrictions.
+The current suite contains 25 automated tests covering authentication, role/task access, temporary passwords, employee provisioning, profile and email editing, private employee photos, comments/attachments and safe photo previews, notification recipients and read state, deadline deduplication, MCP deadline checks, bilingual UI and dashboard analysis packaging, PWA metadata, SSRF prevention, encrypted Web Push, VAPID signatures and revoked-session delivery restrictions.
 
 Also perform browser checks at phone, tablet and desktop widths. Verify sign-in, dashboard, task creation/editing, employee management, notification permission/test, install instructions and lack of horizontal overflow.
 
@@ -232,7 +236,7 @@ The push-service acceptance response confirms that the server delivered the encr
 
 - Automated tests: 24 passing
 - Production Site version: use the latest successful version shown in the Sites project deployment history
-- Application version: 1.7.0
+- Application version: 1.8.0
 - Responsive checks: phone, tablet and desktop layouts; 16 px base text; no horizontal page overflow observed
 - PWA checks: Android/iPhone metadata, manifest shortcuts, service worker push-to-app refresh and install guidance
 - Performance checks: one initial session request, parallel state/notification loading, debounced task search and deferred off-screen card rendering

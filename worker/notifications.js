@@ -17,7 +17,7 @@ export async function sendPush(env,employeeId,notice){
  for(const row of subscriptions){try{
   const sub=JSON.parse(row.subscription);if(!validateSubscription(sub))continue;
   // Keep lock-screen payloads generic; task details require the signed-in application.
-  const message={data:JSON.stringify({id:notice.id,title:noticeTitles[notice.kind]||'Linn Tasks အသိပေးချက်',body:'အသေးစိတ်ကို Linn Tasks ထဲတွင် ကြည့်ပါ။',task:notice.task_id}),options:{ttl:3600}};
+  const message={data:JSON.stringify({id:notice.id,title:noticeTitles[notice.kind]||'Linn Tasks အသိပေးချက်',body:'အသေးစိတ်ကို Linn Tasks ထဲတွင် ကြည့်ပါ။',task:notice.task_id}),options:{ttl:86400,urgency:['due','overdue'].includes(notice.kind)?'high':'normal'}};
   const payload=await buildPushPayload(message,sub,{subject:env.VAPID_SUBJECT,publicKey:env.VAPID_PUBLIC_KEY,privateKey:env.VAPID_PRIVATE_KEY});
   const response=await (env.PUSH_FETCH||fetch)(sub.endpoint,{...payload,signal:AbortSignal.timeout(8000),redirect:'error'});
   if(response.ok)sent++;else{failed++;if(response.status===404||response.status===410)await env.DB.prepare('DELETE FROM push_subscriptions WHERE endpoint_hash=?').bind(row.endpoint_hash).run();}
