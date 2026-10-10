@@ -1,4 +1,4 @@
-# Linn IT Solutions — Linn Tasks 1.9.1
+# Linn IT Solutions — Linn Tasks 1.9.2
 
 Mobile-first employee task delegation system for Linn IT Solutions. The default user interface is Myanmar language and the application can be installed as a PWA on Android and iPhone.
 
@@ -176,7 +176,7 @@ npm test
 npm run build
 ```
 
-The current suite contains 27 automated tests covering authentication, comprehensive employee/Admin task visibility, role/task access, temporary passwords, employee provisioning, profile and email editing, private employee photos, comments/attachments and safe photo previews, notification recipients and read state, deadline deduplication, MCP deadline checks, bilingual UI, dashboard analysis and responsive design packaging, PWA metadata, SSRF prevention, encrypted Web Push, VAPID signatures and revoked-session delivery restrictions.
+The current suite contains 28 automated tests covering authentication, comprehensive employee/Admin task visibility, employee assignee/collaborator status updates including stale forms, role/task access, temporary passwords, employee provisioning, profile and email editing, private employee photos, comments/attachments and safe photo previews, notification recipients and read state, deadline deduplication, MCP deadline checks, bilingual UI, dashboard analysis and responsive design packaging, PWA metadata, SSRF prevention, encrypted Web Push, VAPID signatures and revoked-session delivery restrictions.
 
 Also perform browser checks at phone, tablet and desktop widths. Verify sign-in, dashboard, task creation/editing, employee management, notification permission/test, install instructions and lack of horizontal overflow.
 
@@ -235,9 +235,9 @@ The push-service acceptance response confirms that the server delivered the encr
 
 ## Verification status
 
-- Automated tests: 24 passing
+- Automated tests: 28 passing
 - Production Site version: use the latest successful version shown in the Sites project deployment history
-- Application version: 1.9.1
+- Application version: 1.9.2
 - Responsive checks: phone, tablet and desktop layouts; 16 px base text; no horizontal page overflow observed
 - PWA checks: Android/iPhone metadata, manifest shortcuts, service worker push-to-app refresh and install guidance
 - Performance checks: one initial session request, parallel state/notification loading, debounced task search and deferred off-screen card rendering

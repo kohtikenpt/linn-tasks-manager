@@ -2,7 +2,7 @@ import {authRoutes,sessionIdentity,requirePasswordChange,temporaryHash} from './
 import {pushConfigured,validateSubscription,saveSubscription,noticeHash,sendPush,publishNotice,collectDueNotices,queueNotices} from './notifications.js';
 const iso=()=>new Date().toISOString();
 const uuid=()=>crypto.randomUUID();
-export class HttpError extends Error { constructor(status,message){super(message);this.status=status;} }
+export class HttpError extends Error { constructor(status,message,code){super(message);this.status=status;this.code=code;} }
 const fail=(status,msg)=>{throw new HttpError(status,msg);};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'private, no-store'}});
 const admin=u=>u.role==='admin'||u.role==='ceo';
@@ -114,14 +114,17 @@ export async function api(req,env,ctx){
  if(match){
   const id=match[1],sub=match[2],t=await taskFor(db,u,id);
   if(!sub&&method==='PATCH'){
-   const b=await body(req);if(b.version!==t.version)fail(409,'ဤအလုပ်ကို တခြားသူ ပြောင်းထားသည်။ ပြန်တင်ပြီး ထပ်သိမ်းပါ');
-   if(!admin(u)&&Object.keys(b).some(k=>!['version','status','progress'].includes(k)))fail(403,'အလုပ်အသေးစိတ် ပြင်ရန် Admin ခွင့်လိုသည်');
+   const b=await body(req),progressOnly=!admin(u)&&(Object.hasOwn(b,'status')||Object.hasOwn(b,'progress'))&&Object.keys(b).every(k=>['version','status','progress'].includes(k));
+   if(!admin(u)&&!progressOnly)fail(403,'အလုပ်အသေးစိတ် ပြင်ရန် Admin ခွင့်လိုသည်');
+   // Employees only control status/progress. Apply those fields to the latest visible
+   // task so an Admin edit or real-time refresh cannot leave their form unusable.
+   if(!progressOnly&&b.version!==t.version)throw new HttpError(409,'ဤအလုပ်ကို တခြားသူ ပြောင်းထားသည်။ ပြန်တင်ပြီး ထပ်သိမ်းပါ','TASK_VERSION_CONFLICT');
    const people=(await db.prepare('SELECT * FROM employees').all()).results;
    // Retain historical inactive members during progress edits; reassignment still requires active people.
    const all=people.map(p=>({...p,active:p.active||t.assignees.includes(p.id)||t.collaborators.includes(p.id)}));
    const updated={...validateTask({...t,...b},all),createdBy:t.createdBy};
    const changed=await db.prepare('UPDATE tasks SET data=?,version=version+1,updated_at=? WHERE id=? AND version=? AND deleted=0').bind(JSON.stringify(updated),iso(),id,t.version).run();
-   if(!changed.meta.changes)fail(409,'အချက်အလက် ပြောင်းလဲနေသည်။ ပြန်တင်ပါ');await audit(db,u,id,'task_updated').run();await queueNotices(env,ctx,publishNotice(env,u,updated,id,'task_updated',`updated:${id}:${t.version+1}`));return json({ok:true});
+   if(!changed.meta.changes)throw new HttpError(409,'အချက်အလက် ပြောင်းလဲနေသည်။ ပြန်တင်ပါ','TASK_VERSION_CONFLICT');await audit(db,u,id,'task_updated').run();await queueNotices(env,ctx,publishNotice(env,u,updated,id,'task_updated',`updated:${id}:${t.version+1}`));return json({ok:true,version:t.version+1,status:updated.status,progress:updated.progress});
   }
   if(!sub&&method==='DELETE'){
    if(!admin(u))fail(403,'Admin ခွင့်လိုအပ်သည်');await db.batch([db.prepare('UPDATE tasks SET deleted=1,version=version+1,updated_at=? WHERE id=?').bind(iso(),id),audit(db,u,id,'task_deleted')]);return json({ok:true});
