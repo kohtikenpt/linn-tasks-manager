@@ -1,4 +1,4 @@
-# Linn IT Solutions — Linn Tasks 1.4.1
+# Linn IT Solutions — Linn Tasks 1.5.0
 
 Mobile-first employee task delegation system for Linn IT Solutions. The default user interface is Myanmar language and the application can be installed as a PWA on Android and iPhone.
 
@@ -28,10 +28,11 @@ Every API request checks the signed-in employee's active status, role and task m
 - Start date/time and completion deadline in Myanmar Standard Time
 - Priority, status, progress percentage and reminder setting
 - Comments and private file attachments up to 10 MB each
+- Inline thumbnail and full-screen preview for safe photo formats, with original-file download
 - CEO/Admin dashboard, workload summary and deadline views
 - Employee directory and editable display name/department
 - Email/password authentication with temporary-password first login
-- Persistent in-app notifications with per-user read state
+- Persistent in-app notifications with per-user read state and a four-second open-app sync fallback
 - Encrypted Web Push for task events and deadline reminders
 - Hourly unattended deadline checks, plus an immediate check while the app is open
 - CSV task export and JSON team backup metadata
@@ -42,7 +43,9 @@ Every API request checks the signed-in employee's active status, role and task m
 
 Task creation, updates, comments and attachments notify relevant task members and administrators, excluding the person who performed the action. An unfinished task that reaches or passes its deadline generates a deduplicated notification for the CEO, active Admin users and relevant task members.
 
-The production Site has an enabled hourly cloud schedule named **Linn Tasks Deadline စစ်ဆေးမှု**. Opening the authenticated app also triggers a shared deadline check. Push delivery requires each phone to install/open the PWA and grant notification permission once. Without permission, the same notice remains available inside the application.
+The production Site has an enabled hourly cloud schedule named **Linn Tasks Deadline စစ်ဆေးမှု**. Opening the authenticated app also triggers a shared deadline check. Push delivery requires each phone to install/open the PWA and grant notification permission once. A received Web Push event refreshes the open application immediately. When Web Push is unavailable, the open application checks for new notices every four seconds and refreshes the affected task automatically.
+
+JPEG, PNG, GIF, WebP and AVIF attachments are displayed as authenticated thumbnails and can be opened in a full-screen viewer. SVG and other attachment formats remain download-only so active content is never rendered inline.
 
 ### Security requirements
 
@@ -165,7 +168,7 @@ npm test
 npm run build
 ```
 
-The current suite contains 21 automated tests covering authentication, role/task access, temporary passwords, employee provisioning, profile editing, comments/attachments, notification recipients and read state, deadline deduplication, MCP deadline checks, PWA metadata, SSRF prevention, encrypted Web Push, VAPID signatures and revoked-session delivery restrictions.
+The current suite contains 22 automated tests covering authentication, role/task access, temporary passwords, employee provisioning, profile editing, comments/attachments and safe photo previews, notification recipients and read state, deadline deduplication, MCP deadline checks, PWA metadata, SSRF prevention, encrypted Web Push, VAPID signatures and revoked-session delivery restrictions.
 
 Also perform browser checks at phone, tablet and desktop widths. Verify sign-in, dashboard, task creation/editing, employee management, notification permission/test, install instructions and lack of horizontal overflow.
 
@@ -224,11 +227,11 @@ The push-service acceptance response confirms that the server delivered the encr
 
 ## Verification status
 
-- Automated tests: 21 passing
-- Production Site version: 9
-- Application version: 1.4.1
+- Automated tests: 22 passing
+- Production Site version: use the latest successful version shown in the Sites project deployment history
+- Application version: 1.5.0
 - Responsive checks: phone, tablet and desktop layouts; 16 px base text; no horizontal page overflow observed
-- PWA checks: Android/iPhone metadata, manifest shortcuts, service worker and install guidance
+- PWA checks: Android/iPhone metadata, manifest shortcuts, service worker push-to-app refresh and install guidance
 - Production deadline automation: enabled hourly in `Asia/Rangoon`
 
 ## Third-party libraries

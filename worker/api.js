@@ -6,6 +6,7 @@ export class HttpError extends Error { constructor(status,message){super(message
 const fail=(status,msg)=>{throw new HttpError(status,msg);};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'private, no-store'}});
 const admin=u=>u.role==='admin'||u.role==='ceo';
+const previewImageTypes=new Set(['image/jpeg','image/png','image/gif','image/webp','image/avif']);
 const publicEmployee=e=>({id:e.id,name:e.name,email:e.email,role:e.role,department:e.department,active:!!e.active,linked:!!e.password_ready,mustChangePassword:!!e.must_change});
 const text=(v,max,required=false)=>{if(typeof v!=='string'||v.length>max||(required&&!v.trim()))fail(400,'ဖြည့်သွင်းထားသော အချက်အလက်ကို ပြန်စစ်ပါ');return v.trim();};
 const audit=(db,u,task,action)=>db.prepare('INSERT INTO audit VALUES (?,?,?,?,?)').bind(uuid(),u.id,task,action,iso());
@@ -114,12 +115,12 @@ export async function api(req,env,ctx){
   if(sub==='attachments'&&method==='POST'){
    if(!env.BUCKET)fail(503,'ဖိုင်သိမ်းဆည်းမှု မချိတ်ဆက်ရသေးပါ');if(Number(req.headers.get('content-length')||0)>11*1024*1024)fail(413,'ဖိုင်တစ်ဖိုင် 10 MB အများဆုံးသာ တင်နိုင်သည်');
    const form=await req.formData(),file=form.get('file');if(!file||typeof file==='string'||file.size===0||file.size>10*1024*1024)fail(400,'10 MB အောက် ဖိုင်တစ်ဖိုင် ရွေးပါ');
-   const name=text(file.name.replace(/[\r\n\\/]/g,'_'),240,true),fid=uuid();await env.BUCKET.put(fid,file.stream(),{httpMetadata:{contentType:'application/octet-stream'}});
+   const name=text(file.name.replace(/[\r\n\\/]/g,'_'),240,true),fid=uuid(),type=file.type||'application/octet-stream';await env.BUCKET.put(fid,file.stream(),{httpMetadata:{contentType:previewImageTypes.has(type)?type:'application/octet-stream'}});
    try{await db.batch([db.prepare('INSERT INTO attachments VALUES (?,?,?,?,?,?,?)').bind(fid,id,u.id,name,file.size,file.type||'application/octet-stream',iso()),audit(db,u,id,'attachment_added')]);}catch(e){await env.BUCKET.delete(fid);throw e;}await queueNotices(env,ctx,publishNotice(env,u,t,id,'attachment_added','attachment:'+fid));return json({ok:true},201);
   }
  }
  if(path.startsWith('/api/files/')&&method==='GET'){
-  const fid=path.split('/')[3],a=await db.prepare('SELECT * FROM attachments WHERE id=?').bind(fid).first();if(!a)fail(404,'ဖိုင် မတွေ့ပါ');await taskFor(db,u,a.task_id);if(!env.BUCKET)fail(503,'ဖိုင်သိုလှောင်မှု မရှိပါ');const object=await env.BUCKET.get(fid);if(!object)fail(404,'ဖိုင် မတွေ့ပါ');return new Response(object.body,{headers:{'Content-Type':'application/octet-stream','Content-Disposition':`attachment; filename="attachment"; filename*=UTF-8''${encodeURIComponent(a.name)}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
+  const fid=path.split('/')[3],a=await db.prepare('SELECT * FROM attachments WHERE id=?').bind(fid).first();if(!a)fail(404,'ဖိုင် မတွေ့ပါ');await taskFor(db,u,a.task_id);if(!env.BUCKET)fail(503,'ဖိုင်သိုလှောင်မှု မရှိပါ');const object=await env.BUCKET.get(fid);if(!object)fail(404,'ဖိုင် မတွေ့ပါ');const preview=url.searchParams.get('preview')==='1'&&previewImageTypes.has(a.content_type),disposition=preview?'inline':'attachment';return new Response(object.body,{headers:{'Content-Type':preview?a.content_type:'application/octet-stream','Content-Disposition':`${disposition}; filename="attachment"; filename*=UTF-8''${encodeURIComponent(a.name)}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
  }
  fail(404,'မတွေ့ပါ');
 }
