@@ -16,6 +16,7 @@ async function body(req){if(Number(req.headers.get('content-length')||0)>100000)
 export async function identity(req,db){const u=await sessionIdentity(req,db);if(!u)fail(401,'Email နှင့် password ဖြင့် ဝင်ရောက်ပါ');return u;}
 const unpack=r=>({...JSON.parse(r.data),id:r.id,version:r.version,createdAt:r.created_at,updatedAt:r.updated_at});
 export const canRead=(u,t)=>admin(u)||t.assignees.includes(u.id)||t.collaborators.includes(u.id);
+export const visibleTasks=(u,rows)=>rows.map(unpack).filter(t=>canRead(u,t));
 async function taskFor(db,u,id){const r=await db.prepare('SELECT * FROM tasks WHERE id=? AND deleted=0').bind(id).first();if(!r)fail(404,'အလုပ် မတွေ့ပါ');const t=unpack(r);if(!canRead(u,t))fail(403,'ဤအလုပ်ကို ကြည့်ခွင့်မရှိပါ');return t;}
 export function validateTask(b,people){
  const title=text(b.title,160,true),details=text(b.details??'',10000);
@@ -44,7 +45,7 @@ export async function api(req,env,ctx){
  }
  if(path==='/api/notifications'&&method==='GET'){
   await collectDueNotices(env,ctx);
-  const tasks=(await db.prepare('SELECT * FROM tasks WHERE deleted=0').all()).results.map(unpack),allowed=new Set(tasks.filter(t=>canRead(u,t)).map(t=>t.id));
+  const tasks=visibleTasks(u,(await db.prepare('SELECT * FROM tasks WHERE deleted=0').all()).results),allowed=new Set(tasks.map(t=>t.id));
   const items=(await db.prepare('SELECT * FROM notifications WHERE employee_id=? ORDER BY created_at DESC LIMIT 200').bind(u.id).all()).results.filter(n=>!n.task_id||allowed.has(n.task_id));
   return json({items,pushConfigured:pushConfigured(env),publicKey:env.VAPID_PUBLIC_KEY||null});
  }
@@ -63,7 +64,7 @@ export async function api(req,env,ctx){
  }
  if(path==='/api/state'&&method==='GET'){
   const people=(await db.prepare('SELECT e.*,c.must_change, CASE WHEN c.employee_id IS NOT NULL THEN 1 ELSE 0 END AS password_ready,p.updated_at AS photo_updated_at FROM employees e LEFT JOIN credentials c ON c.employee_id=e.id LEFT JOIN employee_photos p ON p.employee_id=e.id ORDER BY e.created_at').all()).results;
-  const tasks=(await db.prepare('SELECT * FROM tasks WHERE deleted=0 ORDER BY updated_at DESC').all()).results.map(unpack).filter(t=>canRead(u,t));
+  const tasks=visibleTasks(u,(await db.prepare('SELECT * FROM tasks WHERE deleted=0 ORDER BY updated_at DESC').all()).results);
   const allowed=new Set(tasks.map(t=>t.id));
   const comments=(await db.prepare('SELECT * FROM comments ORDER BY created_at').all()).results.filter(c=>allowed.has(c.task_id));
   const attachments=(await db.prepare('SELECT * FROM attachments ORDER BY created_at').all()).results.filter(a=>allowed.has(a.task_id));
