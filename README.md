@@ -1,4 +1,4 @@
-# Linn IT Solutions — Linn Tasks 1.9.2
+# Linn IT Solutions — Linn Tasks 1.9.3
 
 Mobile-first employee task delegation system for Linn IT Solutions. The default user interface is Myanmar language and the application can be installed as a PWA on Android and iPhone.
 
@@ -237,7 +237,7 @@ The push-service acceptance response confirms that the server delivered the encr
 
 - Automated tests: 28 passing
 - Production Site version: use the latest successful version shown in the Sites project deployment history
-- Application version: 1.9.2
+- Application version: 1.9.3
 - Responsive checks: phone, tablet and desktop layouts; 16 px base text; no horizontal page overflow observed
 - PWA checks: Android/iPhone metadata, manifest shortcuts, service worker push-to-app refresh and install guidance
 - Performance checks: one initial session request, parallel state/notification loading, debounced task search and deferred off-screen card rendering
