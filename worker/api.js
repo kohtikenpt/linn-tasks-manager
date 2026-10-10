@@ -7,7 +7,9 @@ const fail=(status,msg)=>{throw new HttpError(status,msg);};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'private, no-store'}});
 const admin=u=>u.role==='admin'||u.role==='ceo';
 const previewImageTypes=new Set(['image/jpeg','image/png','image/gif','image/webp','image/avif']);
-const publicEmployee=e=>({id:e.id,name:e.name,email:e.email,role:e.role,department:e.department,active:!!e.active,linked:!!e.password_ready,mustChangePassword:!!e.must_change});
+const profileImageTypes=new Set(['image/jpeg','image/png','image/webp']);
+const employeePhotoKey=id=>'employee-photo-'+id;
+const publicEmployee=e=>({id:e.id,name:e.name,email:e.email,role:e.role,department:e.department,active:!!e.active,linked:!!e.password_ready,mustChangePassword:!!e.must_change,hasPhoto:!!e.photo_updated_at,photoUpdatedAt:e.photo_updated_at||null});
 const text=(v,max,required=false)=>{if(typeof v!=='string'||v.length>max||(required&&!v.trim()))fail(400,'ဖြည့်သွင်းထားသော အချက်အလက်ကို ပြန်စစ်ပါ');return v.trim();};
 const audit=(db,u,task,action)=>db.prepare('INSERT INTO audit VALUES (?,?,?,?,?)').bind(uuid(),u.id,task,action,iso());
 async function body(req){if(Number(req.headers.get('content-length')||0)>100000)fail(413,'အချက်အလက်ပမာဏ များလွန်းသည်');const raw=await req.text();if(raw.length>100000)fail(413,'အချက်အလက်ပမာဏ များလွန်းသည်');try{return JSON.parse(raw);}catch{fail(400,'အချက်အလက်ပုံစံ မှားနေသည်');}}
@@ -60,14 +62,14 @@ export async function api(req,env,ctx){
   const now=iso(),id=uuid();await db.prepare('INSERT INTO notifications VALUES (?,?,NULL,?,?,?,NULL,?)').bind(id,u.id,'test','ဖုန်းသတိပေးချက် စမ်းသပ်မှု',now,'test:'+id).run();return json({ok:true,...await sendPush(env,u.id,{id,kind:'test',task_id:null})});
  }
  if(path==='/api/state'&&method==='GET'){
-  const people=(await db.prepare('SELECT e.*,c.must_change, CASE WHEN c.employee_id IS NOT NULL THEN 1 ELSE 0 END AS password_ready FROM employees e LEFT JOIN credentials c ON c.employee_id=e.id ORDER BY e.created_at').all()).results;
+  const people=(await db.prepare('SELECT e.*,c.must_change, CASE WHEN c.employee_id IS NOT NULL THEN 1 ELSE 0 END AS password_ready,p.updated_at AS photo_updated_at FROM employees e LEFT JOIN credentials c ON c.employee_id=e.id LEFT JOIN employee_photos p ON p.employee_id=e.id ORDER BY e.created_at').all()).results;
   const tasks=(await db.prepare('SELECT * FROM tasks WHERE deleted=0 ORDER BY updated_at DESC').all()).results.map(unpack).filter(t=>canRead(u,t));
   const allowed=new Set(tasks.map(t=>t.id));
   const comments=(await db.prepare('SELECT * FROM comments ORDER BY created_at').all()).results.filter(c=>allowed.has(c.task_id));
   const attachments=(await db.prepare('SELECT * FROM attachments ORDER BY created_at').all()).results.filter(a=>allowed.has(a.task_id));
   const activity=(await db.prepare('SELECT * FROM audit ORDER BY created_at DESC LIMIT 100').all()).results.filter(a=>admin(u)||(a.task_id&&allowed.has(a.task_id)));
   // Employees see colleague display data, but not others' account email addresses.
-  return json({me:publicEmployee(u),people:people.map(p=>({...publicEmployee(p),email:admin(u)||p.id===u.id?p.email:''})),tasks,comments,attachments,activity,filesReady:!!env.BUCKET,serverTime:iso()});
+  return json({me:publicEmployee(people.find(p=>p.id===u.id)||u),people:people.map(p=>({...publicEmployee(p),email:admin(u)||p.id===u.id?p.email:''})),tasks,comments,attachments,activity,filesReady:!!env.BUCKET,serverTime:iso()});
  }
  if(path==='/api/employees'&&method==='POST'){
   if(!admin(u))fail(403,'Admin ခွင့်လိုအပ်သည်');const b=await body(req);
@@ -78,15 +80,29 @@ export async function api(req,env,ctx){
   const id=uuid(),hash=env.EMPLOYEE_DEFAULT_PASSWORD?await temporaryHash(env):null;
   await db.batch([db.prepare('INSERT INTO employees VALUES (?,?,?,?,?,?,1,?)').bind(id,null,name,email,b.role,department,iso()),...(hash?[db.prepare('INSERT INTO credentials (employee_id,password_hash,updated_at,must_change) VALUES (?,?,?,1)').bind(id,hash,iso())]:[]),audit(db,u,null,'employee_added')]);return json({ok:true,id,...(hash?{email,temporaryPassword:env.EMPLOYEE_DEFAULT_PASSWORD,mustChangePassword:true}:{})},201);
  }
+ const employeePhoto=path.match(/^\/api\/employees\/([^/]+)\/photo$/);
+ if(employeePhoto){
+  const id=employeePhoto[1],e=await db.prepare('SELECT e.*,p.content_type,p.updated_at AS photo_updated_at FROM employees e LEFT JOIN employee_photos p ON p.employee_id=e.id WHERE e.id=?').bind(id).first();if(!e)fail(404,'ဝန်ထမ်း မတွေ့ပါ');
+  if(method==='GET'){
+   if(!e.photo_updated_at)fail(404,'ဝန်ထမ်းပုံ မရှိသေးပါ');if(!env.BUCKET)fail(503,'ဖိုင်သိုလှောင်မှု မရှိပါ');const object=await env.BUCKET.get(employeePhotoKey(id));if(!object)fail(404,'ဝန်ထမ်းပုံ မရှိသေးပါ');return new Response(object.body,{headers:{'Content-Type':e.content_type,'Content-Disposition':'inline; filename="employee-photo"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
+  }
+  const canEdit=u.id===id||u.role==='ceo'||(u.role==='admin'&&e.role==='employee');if(!canEdit)fail(403,'ဤဝန်ထမ်းပုံကို ပြင်ခွင့်မရှိပါ');
+  if(method==='POST'){
+   if(!env.BUCKET)fail(503,'ဖိုင်သိမ်းဆည်းမှု မချိတ်ဆက်ရသေးပါ');if(Number(req.headers.get('content-length')||0)>4*1024*1024)fail(413,'ဝန်ထမ်းပုံ 3 MB အများဆုံးသာ တင်နိုင်သည်');const form=await req.formData(),file=form.get('photo');if(!file||typeof file==='string'||file.size===0||file.size>3*1024*1024||!profileImageTypes.has(file.type))fail(400,'JPG, PNG သို့မဟုတ် WebP ပုံ 3 MB အောက် ရွေးပါ');const now=iso();await env.BUCKET.put(employeePhotoKey(id),file.stream(),{httpMetadata:{contentType:file.type}});await db.batch([db.prepare('INSERT INTO employee_photos (employee_id,content_type,updated_at) VALUES (?,?,?) ON CONFLICT(employee_id) DO UPDATE SET content_type=excluded.content_type,updated_at=excluded.updated_at').bind(id,file.type,now),audit(db,u,null,'employee_photo_updated')]);return json({ok:true,updatedAt:now});
+  }
+  if(method==='DELETE'){await db.prepare('DELETE FROM employee_photos WHERE employee_id=?').bind(id).run();if(env.BUCKET)await env.BUCKET.delete(employeePhotoKey(id));await audit(db,u,null,'employee_photo_removed').run();return json({ok:true});}
+ }
  if(path.startsWith('/api/employees/')&&method==='PATCH'){
-  if(u.role!=='ceo')fail(403,'CEO ခွင့်လိုအပ်သည်');const id=path.split('/')[3],b=await body(req);
-  if(Object.keys(b).some(k=>!['name','department','role','active'].includes(k)))fail(400,'အချက်အလက်ကို ပြန်စစ်ပါ');
+  if(!admin(u))fail(403,'Admin ခွင့်လိုအပ်သည်');const id=path.split('/')[3],b=await body(req);
+  if(Object.keys(b).some(k=>!['name','email','department','role','active'].includes(k)))fail(400,'အချက်အလက်ကို ပြန်စစ်ပါ');
   const e=await db.prepare('SELECT * FROM employees WHERE id=?').bind(id).first();if(!e)fail(404,'ဝန်ထမ်း မတွေ့ပါ');
-  const name=text(b.name??e.name,100,true),department=text(b.department??e.department,100),role=b.role??e.role,active=b.active??!!e.active;
+  if(u.role==='admin'&&(e.role!=='employee'||Object.keys(b).some(k=>['role','active'].includes(k))))fail(403,'Admin သည် ဝန်ထမ်းအချက်အလက်ကိုသာ ပြင်နိုင်သည်');
+  const name=text(b.name??e.name,100,true),email=text(b.email??e.email,254,true).toLowerCase(),department=text(b.department??e.department,100),role=b.role??e.role,active=b.active??!!e.active;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))fail(400,'အီးမေးလ်ကို ပြန်စစ်ပါ');const duplicate=await db.prepare('SELECT id FROM employees WHERE email=? AND id<>?').bind(email,id).first();if(duplicate)fail(409,'ဤအီးမေးလ် ရှိပြီးသားဖြစ်သည်');
   if(typeof active!=='boolean'||!['ceo','admin','employee'].includes(role))fail(400,'ခွင့်ပြုချက်ကို ပြန်စစ်ပါ');
   if(e.role==='ceo'&&(role!=='ceo'||active!==!!e.active))fail(400,'CEO ခွင့်ကို ပြောင်းမရပါ');
   if(e.role!=='ceo'&&role==='ceo')fail(403,'CEO အသစ် ခန့်မရပါ');
-  await db.batch([db.prepare('UPDATE employees SET name=?,department=?,role=?,active=? WHERE id=?').bind(name,department,role,active?1:0,id),audit(db,u,null,'employee_updated')]);return json({ok:true});
+  await db.batch([db.prepare('UPDATE employees SET name=?,email=?,department=?,role=?,active=? WHERE id=?').bind(name,email,department,role,active?1:0,id),audit(db,u,null,'employee_updated')]);return json({ok:true});
  }
  if(path==='/api/tasks'&&method==='POST'){
   if(!admin(u))fail(403,'အလုပ်တာဝန်ပေးရန် Admin ခွင့်လိုသည်');const b=await body(req),people=(await db.prepare('SELECT * FROM employees').all()).results;

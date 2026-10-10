@@ -8,6 +8,7 @@ export function database(filename=':memory:'){
  if(!db.prepare('PRAGMA table_info(credentials)').all().some(c=>c.name==='must_change'))db.exec(readFileSync('drizzle/0002_temporary_password.sql','utf8'));
  if(!db.prepare("SELECT name FROM sqlite_master WHERE name='notifications'").get())db.exec(readFileSync('drizzle/0003_notifications.sql','utf8').replaceAll('--> statement-breakpoint',''));
  if(!db.prepare("SELECT name FROM sqlite_master WHERE name='system_state'").get())db.exec(readFileSync('drizzle/0004_pwa_deadline_schedule.sql','utf8'));
+ if(!db.prepare("SELECT name FROM sqlite_master WHERE name='employee_photos'").get())db.exec(readFileSync('drizzle/0005_employee_photos.sql','utf8'));
  const wrap=(sql,values=[])=>({bind(...v){return wrap(sql,v);},async first(){return db.prepare(sql).get(...values)||null;},async all(){return {results:db.prepare(sql).all(...values)};},async run(){const r=db.prepare(sql).run(...values);return {meta:{changes:Number(r.changes)}};}});
  return {raw:db,prepare:sql=>wrap(sql),async batch(statements){db.exec('BEGIN');try{const out=[];for(const s of statements)out.push(await s.run());db.exec('COMMIT');return out;}catch(e){db.exec('ROLLBACK');throw e;}}};
 }

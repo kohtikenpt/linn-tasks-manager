@@ -1,4 +1,4 @@
-# Linn IT Solutions — Linn Tasks 1.6.0
+# Linn IT Solutions — Linn Tasks 1.7.0
 
 Mobile-first employee task delegation system for Linn IT Solutions. The default user interface is Myanmar language and the application can be installed as a PWA on Android and iPhone.
 
@@ -30,7 +30,8 @@ Every API request checks the signed-in employee's active status, role and task m
 - Comments and private file attachments up to 10 MB each
 - Inline thumbnail and full-screen preview for safe photo formats, with original-file download
 - CEO/Admin dashboard, workload summary and deadline views
-- Employee directory and editable display name/department
+- Employee directory with switchable Card/Table views and editable name, email, department and role-limited access
+- Private employee profile photos in JPG, PNG or WebP format up to 3 MB
 - Email/password authentication with temporary-password first login
 - Persistent in-app notifications with per-user read state and a four-second open-app sync fallback
 - Encrypted Web Push for task events and deadline reminders
@@ -70,7 +71,7 @@ JPEG, PNG, GIF, WebP and AVIF attachments are displayed as authenticated thumbna
 - The Java WebView APK does not implement the browser PWA Push API. Use the installed PWA for background phone notifications.
 - Native APK background push would require a native messaging provider and a rebuilt APK.
 - SMS, automatic invitation/reset email and automatic CEO recovery are not configured.
-- JSON backup contains attachment metadata, not attachment bytes, and there is no restore screen yet.
+- JSON backup contains attachment and employee-photo metadata, not the image/file bytes, and there is no restore screen yet.
 - Cloud deadline checks run hourly, so a background alert can arrive up to approximately one hour after a deadline. An open app checks sooner.
 
 ## Tech stack
@@ -81,7 +82,7 @@ JPEG, PNG, GIF, WebP and AVIF attachments are displayed as authenticated thumbna
 | PWA | Web App Manifest, Service Worker, Cache API | Android/iPhone installation, Home Screen shortcuts and offline shell |
 | API runtime | Cloudflare-compatible Worker, JavaScript ES2022 | Authentication, authorization, tasks, notifications, files and MCP endpoint |
 | Database | D1 / SQLite with SQL migrations | Employees, credentials, sessions, tasks, comments, notifications and rate limits |
-| File storage | R2 object storage | Private task attachments |
+| File storage | R2 object storage | Private task attachments and authenticated employee photos |
 | Authentication | `bcryptjs` 3.0.2, Web Crypto API | Password hashes, session tokens and activation/reset controls |
 | Web Push | `@block65/webcrypto-web-push` 2.0.0 | RFC 8291 encrypted payloads and RFC 8292 VAPID authorization |
 | Bundling | esbuild 0.25.10 | Worker dependency bundle and production build |
@@ -170,7 +171,7 @@ npm test
 npm run build
 ```
 
-The current suite contains 22 automated tests covering authentication, role/task access, temporary passwords, employee provisioning, profile editing, comments/attachments and safe photo previews, notification recipients and read state, deadline deduplication, MCP deadline checks, PWA metadata, SSRF prevention, encrypted Web Push, VAPID signatures and revoked-session delivery restrictions.
+The current suite contains 24 automated tests covering authentication, role/task access, temporary passwords, employee provisioning, profile and email editing, private employee photos, comments/attachments and safe photo previews, notification recipients and read state, deadline deduplication, MCP deadline checks, PWA metadata, SSRF prevention, encrypted Web Push, VAPID signatures and revoked-session delivery restrictions.
 
 Also perform browser checks at phone, tablet and desktop widths. Verify sign-in, dashboard, task creation/editing, employee management, notification permission/test, install instructions and lack of horizontal overflow.
 
@@ -229,9 +230,9 @@ The push-service acceptance response confirms that the server delivered the encr
 
 ## Verification status
 
-- Automated tests: 22 passing
+- Automated tests: 24 passing
 - Production Site version: use the latest successful version shown in the Sites project deployment history
-- Application version: 1.6.0
+- Application version: 1.7.0
 - Responsive checks: phone, tablet and desktop layouts; 16 px base text; no horizontal page overflow observed
 - PWA checks: Android/iPhone metadata, manifest shortcuts, service worker push-to-app refresh and install guidance
 - Performance checks: one initial session request, parallel state/notification loading, debounced task search and deferred off-screen card rendering
