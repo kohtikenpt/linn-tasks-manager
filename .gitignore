@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.local/
+android/build/
+*.apk
+*.jks
+*.keystore
+.env
+
+outputs/
+work/
+worker/assets.js
