@@ -55,7 +55,8 @@ html{min-height:100%;background:var(--bg);overscroll-behavior-y:none;-webkit-tex
  .bottom-nav{left:8px;right:8px;bottom:7px;inset:auto 8px 7px;border:1px solid #dce6e0;border-radius:17px;padding:5px 5px calc(5px + env(safe-area-inset-bottom))}
  .bottom-nav button{min-height:50px;padding:5px 2px;font-size:11px;line-height:1.35}.bottom-nav svg{width:21px;height:21px}
  dialog{max-height:calc(100dvh - max(8px,env(safe-area-inset-top)));overflow:hidden}
- .modal-header{padding:14px 14px 12px}.modal-header h2{font-size:18px}.modal-body{padding:15px 14px;overflow-y:auto}.modal-foot{padding:11px 14px calc(11px + env(safe-area-inset-bottom));gap:8px}
+ dialog[open]:not(.photo-viewer){display:flex;flex-direction:column}
+ .modal-header{padding:14px 14px 12px;flex:0 0 auto}.modal-header h2{font-size:18px}.modal-body{padding:15px 14px;flex:1 1 auto;min-height:0;overflow-y:auto}.modal-foot{display:grid;grid-template-columns:minmax(0,1fr);padding:11px 14px calc(11px + env(safe-area-inset-bottom));gap:8px;flex:0 0 auto}.modal-foot>*{min-width:0;max-width:100%}.modal-foot .btn{width:100%}
  .detail-info{grid-template-columns:1fr;gap:11px;padding:13px}.progress-control{display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:8px 10px;margin:12px 0 18px}.progress-control label{grid-column:1/-1;margin:0}.progress-control input{width:100%;height:44px}.progress-control output{align-self:center}.progress-control .btn{grid-column:1/-1;width:100%;min-height:44px}
  .comment-box{display:grid;grid-template-columns:1fr}.comment-box textarea{width:100%}.comment-box .btn{width:100%;height:auto;min-height:44px;margin:0}
  .section-row{gap:8px}.section-row h3{min-width:0}.section-row .btn{flex-shrink:0}
